@@ -180,7 +180,7 @@ def main():
                         choices=['tanh', 'relu'], default='relu')
     parser.add_argument('-optimizer',
                         choices=['sgd', 'adam'], default='sgd')
-    parser.add_argument('-data_path', type=str, default='../../intel_landscapes.v2.npz',)
+    parser.add_argument('-data_path', type=str, default='../intel_landscapes.v2.npz',)
     opt = parser.parse_args()
 
     utils.configure_seed(seed=42)
@@ -212,9 +212,14 @@ def main():
     optims = {"adam": torch.optim.Adam, "sgd": torch.optim.SGD}
 
     optim_cls = optims[opt.optimizer]
-    optimizer = optim_cls(
-        model.parameters(), lr=opt.learning_rate, weight_decay=opt.l2_decay, momentum = opt.momentum
-    )
+    if opt.optimizer == "adam":
+        optimizer = optim_cls(
+            model.parameters(), lr=opt.learning_rate, weight_decay=opt.l2_decay
+        )
+    else:  # "sgd"
+        optimizer = optim_cls(
+            model.parameters(), lr=opt.learning_rate, weight_decay=opt.l2_decay, momentum=opt.momentum
+        )
 
     # get a loss criterion
     criterion = nn.CrossEntropyLoss()

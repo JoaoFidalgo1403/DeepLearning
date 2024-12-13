@@ -79,6 +79,7 @@ class LogisticRegression(LinearModel):
         # Update weights
         self.W += learning_rate * gradient
 
+############################################################################################################################
 # On the making
 class MLP(object):
     def __init__(self, n_classes, n_features, hidden_size):
@@ -88,10 +89,10 @@ class MLP(object):
         self.hidden_size = hidden_size
 
         # Initialize weights and biases
-        self.W1 = np.random.normal(0.1, 0.1, (hidden_size, n_features)) 
-        self.b1 = np.zeros((hidden_size))                             # Bias for hidden layer
-        self.W2 = np.random.normal(0.1, 0.1, (n_classes, hidden_size)) 
-        self.b2 = np.zeros((n_classes))                              # Bias for output layer
+        self.W1 = .1 * np.random.normal(0.1, 0.1, (hidden_size, n_features)) 
+        self.b1 = .1 * np.zeros((hidden_size))                             
+        self.W2 = .1 * np.random.normal(0.1, 0.1, (n_classes, hidden_size)) 
+        self.b2 = .1 * np.zeros((n_classes))                            
 
     def relu(self, x):
         """ReLU activation function."""
@@ -108,26 +109,32 @@ class MLP(object):
         # compute hidden layers
         for i in range(num_layers):
                 h = x if i == 0 else hiddens[i-1]
-                z = weights[i].dot(h) + biases[i] # Needs checking
+                z = weights[i].dot(h) + biases[i]
                 if i < num_layers - 1:  # Assuming the output layer has no activation.
                     hiddens.append(g(z))
         #compute output
         output = z
         return output, hiddens
 
+# PROBLEM PROBABLY IS HERE        
     def compute_loss(self, output, y):
         # compute loss
-        probs = np.exp(output) / np.sum(np.exp(output))
-        loss = -y.dot(np.log(probs))
+        epsilon=1e-6
+        output_shifted = output - np.max(output)  # SHIFT VALUES SO EXP DOESNT OVERFLOW
+        probs = np.exp(output_shifted) / (np.sum(np.exp(output_shifted)) + epsilon) # ADD EPSILON SO LOG DOESNT BREAK
+        loss = -y.dot(np.log(probs + epsilon)) 
 
-        return loss  # Scalar loss
-
+        return loss #loss is returning negative values which is not possible! 
+        
     def backward(self, x, y, output, hiddens, weights):
         num_layers = len(weights)
         g = self.relu
         z = output
 
-        probs = np.exp(output) / np.sum(np.exp(output))
+# PROBLEM PROBABLY IS HERE        
+        epsilon=1e-6
+        output_shifted = output - np.max(output)  # SHIFT VALUES SO EXP DOESNT OVERFLOW
+        probs = np.exp(output_shifted) / (np.sum(np.exp(output_shifted)) + epsilon) # ADD EPSILON SO LOG DOESNT BREAK
 
         grad_z = probs - y
 
@@ -142,7 +149,7 @@ class MLP(object):
             grad_weights.append(grad_z[:, None].dot(h[:, None].T))
             grad_biases.append(grad_z)
 
-            grad_h = weights[i].T.dot(grad_z)  # Backpropagate ReLU gradient
+            grad_h = weights[i].T.dot(grad_z)
             grad_z = grad_h * self.relu_derivative(h)
 
         # Making gradient vectors have the correct order
@@ -196,6 +203,8 @@ class MLP(object):
 
             return total_loss
                 
+############################################################################################################################
+
 
 def plot(epochs, train_accs, val_accs, filename=None):
     plt.xlabel('Epoch')

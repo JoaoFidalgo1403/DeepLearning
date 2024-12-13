@@ -31,7 +31,6 @@ class LogisticRegression(nn.Module):
         # the super __init__ line, otherwise the magic doesn't work.
         self.weights = nn.Parameter(torch.randn(n_features, n_classes) * 0.01)
         self.bias = nn.Parameter(torch.zeros(n_classes))
-        self.l2_decay = 0.01
 
     def forward(self, x, **kwargs):
         """
@@ -69,7 +68,24 @@ class FeedforwardNetwork(nn.Module):
         """
         super().__init__()
         # Implement me!
-        raise NotImplementedError
+
+
+        # Define activation function
+        activations = {
+            "relu": nn.ReLU,
+            "tanh": nn.Tanh
+        }
+        self.activation = activations[activation_type]()
+
+        # Create layers
+        self.layers = nn.ModuleList()
+        self.layers.append(nn.Linear(n_features, hidden_size))  # Input layer
+        for _ in range(layers - 1):  # Hidden layers
+            self.layers.append(nn.Linear(hidden_size, hidden_size))
+        self.output_layer = nn.Linear(hidden_size, n_classes)  # Output layer
+
+        # Dropout layer
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, **kwargs):
         """
@@ -79,7 +95,12 @@ class FeedforwardNetwork(nn.Module):
         the output logits from x. This will include using various hidden
         layers, pointwise nonlinear functions, and dropout.
         """
-        raise NotImplementedError
+        for layer in self.layers:
+            x = layer(x)
+            x = self.activation(x)
+            x = self.dropout(x)
+        logits = self.output_layer(x)  # No activation after the final layer
+        return logits
 
 
 def train_batch(X, y, model, optimizer, criterion, **kwargs):
@@ -100,24 +121,28 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     This function should return the loss (tip: call loss.item()) to get the
     loss as a numerical value that is not part of the computation graph.
     """
+   
+
+    # Set model to training mode
     model.train()
-    optimizer.zero_grad()  # Clear previous gradients
 
-    # Forward pass
-    logits = model(X)
-    
+    # Zero out the gradients from the previous step
+    optimizer.zero_grad()
+
+    # Forward pass: Compute model predictions
+    predictions = model(X)
+
     # Compute the loss
-    loss = criterion(logits, y)
-    
-    # Add L2 regularization
-    l2_reg = model.l2_decay * (model.weights ** 2).sum()
-    loss += l2_reg
+    loss = criterion(predictions, y)
 
-    # Backward pass
+    # Backward pass: Compute gradients
     loss.backward()
-    optimizer.step()  # Update parameters
 
-    return loss.item()  # Return the loss as a numerical value
+    # Gradient step: Update model parameters
+    optimizer.step()
+
+    # Return the loss as a numerical value
+    return loss.item()
 
 
 def predict(model, X):
@@ -180,7 +205,7 @@ def main():
                         choices=['tanh', 'relu'], default='relu')
     parser.add_argument('-optimizer',
                         choices=['sgd', 'adam'], default='sgd')
-    parser.add_argument('-data_path', type=str, default='../intel_landscapes.v2.npz',)
+    parser.add_argument('-data_path', type=str, default='../../intel_landscapes.v2.npz',)
     opt = parser.parse_args()
 
     utils.configure_seed(seed=42)
@@ -212,14 +237,9 @@ def main():
     optims = {"adam": torch.optim.Adam, "sgd": torch.optim.SGD}
 
     optim_cls = optims[opt.optimizer]
-    if opt.optimizer == "adam":
-        optimizer = optim_cls(
-            model.parameters(), lr=opt.learning_rate, weight_decay=opt.l2_decay
-        )
-    else:  # "sgd"
-        optimizer = optim_cls(
-            model.parameters(), lr=opt.learning_rate, weight_decay=opt.l2_decay, momentum=opt.momentum
-        )
+    optimizer = optim_cls(
+        model.parameters(), lr=opt.learning_rate, weight_decay=opt.l2_decay, momentum = opt.momentum
+    )
 
     # get a loss criterion
     criterion = nn.CrossEntropyLoss()

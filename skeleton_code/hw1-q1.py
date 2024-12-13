@@ -89,23 +89,22 @@ class MLP(object):
         self.hidden_size = hidden_size
 
         # Initialize weights and biases
-        self.W1 = .1 * np.random.normal(0.1, 0.1, (hidden_size, n_features)) 
-        self.b1 = .1 * np.zeros((hidden_size))                             
-        self.W2 = .1 * np.random.normal(0.1, 0.1, (n_classes, hidden_size)) 
-        self.b2 = .1 * np.zeros((n_classes))                            
+        self.W1 = np.random.normal(0.1, 0.1, (hidden_size, n_features)) 
+        self.b1 = np.zeros((hidden_size))                             
+        self.W2 = np.random.normal(0.1, 0.1, (n_classes, hidden_size)) 
+        self.b2 = np.zeros((n_classes))                            
 
     def relu(self, x):
-        """ReLU activation function."""
         return np.maximum(0, x)
 
     def relu_derivative(self, x):
-        """Derivative of ReLU."""
         return (x > 0).astype(float)
 
     def forward(self, x, weights, biases, debug):
         num_layers = len(weights)
         g = self.relu
         hiddens = []
+
         # compute hidden layers
         for i in range(num_layers):
                 h = x if i == 0 else hiddens[i-1]
@@ -116,22 +115,20 @@ class MLP(object):
         output = z
         return output, hiddens
 
-# PROBLEM PROBABLY IS HERE        
     def compute_loss(self, output, y):
         # compute loss
         epsilon=1e-6
-        output_shifted = output - np.max(output)  # SHIFT VALUES SO EXP DOESNT OVERFLOW
+        output_shifted = output - np.max(output)
         probs = np.exp(output_shifted) / (np.sum(np.exp(output_shifted)) + epsilon) # ADD EPSILON SO LOG DOESNT BREAK
         loss = -y.dot(np.log(probs + epsilon)) 
 
-        return loss #loss is returning negative values which is not possible! 
+        return loss  
         
     def backward(self, x, y, output, hiddens, weights):
         num_layers = len(weights)
         g = self.relu
         z = output
 
-# PROBLEM PROBABLY IS HERE        
         epsilon=1e-6
         output_shifted = output - np.max(output)  # SHIFT VALUES SO EXP DOESNT OVERFLOW
         probs = np.exp(output_shifted) / (np.sum(np.exp(output_shifted)) + epsilon) # ADD EPSILON SO LOG DOESNT BREAK
@@ -179,13 +176,12 @@ class MLP(object):
         return n_correct / n_possible
 
     def train_epoch(self, X, y, learning_rate=0.001, **kwargs):
-        num_layers = len([self.W1, self.W2])
+        num_layers = 2
         total_loss = 0
-
         # For each observation and target
         for x, y_true in zip(X, y):
+            
             # Compute forward pass for a single sample
-
             output, hiddens = self.forward(x, [self.W1, self.W2], [self.b1, self.b2], True)
             
             # Compute the loss for a single sample
@@ -201,7 +197,7 @@ class MLP(object):
             self.W2 -= learning_rate * grad_weights[1]
             self.b2 -= learning_rate * grad_biases[1]
 
-            return total_loss
+        return total_loss / len(X)
                 
 ############################################################################################################################
 
@@ -251,7 +247,7 @@ def main():
                         help="""Learning rate for parameter updates (needed for
                         logistic regression and MLP, but not perceptron)""")
     parser.add_argument('-l2_penalty', type=float, default=0.0,)
-    parser.add_argument('-data_path', type=str, default='../intel_landscapes.v2.npz',)
+    parser.add_argument('-data_path', type=str, default='../../intel_landscapes.v2.npz',)
     opt = parser.parse_args()
 
     utils.configure_seed(seed=42)

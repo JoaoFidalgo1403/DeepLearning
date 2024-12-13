@@ -29,6 +29,9 @@ class LogisticRegression(nn.Module):
         super().__init__()
         # In a pytorch module, the declarations of layers needs to come after
         # the super __init__ line, otherwise the magic doesn't work.
+        self.weights = nn.Parameter(torch.randn(n_features, n_classes) * 0.01)
+        self.bias = nn.Parameter(torch.zeros(n_classes))
+        self.l2_decay = 0.01
 
     def forward(self, x, **kwargs):
         """
@@ -44,7 +47,8 @@ class LogisticRegression(nn.Module):
         forward pass -- this is enough for it to figure out how to do the
         backward pass.
         """
-        raise NotImplementedError
+        logits = x @ self.weights + self.bias
+        return logits
 
 
 class FeedforwardNetwork(nn.Module):
@@ -96,7 +100,24 @@ def train_batch(X, y, model, optimizer, criterion, **kwargs):
     This function should return the loss (tip: call loss.item()) to get the
     loss as a numerical value that is not part of the computation graph.
     """
-    raise NotImplementedError
+    model.train()
+    optimizer.zero_grad()  # Clear previous gradients
+
+    # Forward pass
+    logits = model(X)
+    
+    # Compute the loss
+    loss = criterion(logits, y)
+    
+    # Add L2 regularization
+    l2_reg = model.l2_decay * (model.weights ** 2).sum()
+    loss += l2_reg
+
+    # Backward pass
+    loss.backward()
+    optimizer.step()  # Update parameters
+
+    return loss.item()  # Return the loss as a numerical value
 
 
 def predict(model, X):
@@ -159,7 +180,7 @@ def main():
                         choices=['tanh', 'relu'], default='relu')
     parser.add_argument('-optimizer',
                         choices=['sgd', 'adam'], default='sgd')
-    parser.add_argument('-data_path', type=str, default='intel_landscapes.npz',)
+    parser.add_argument('-data_path', type=str, default='../../intel_landscapes.v2.npz',)
     opt = parser.parse_args()
 
     utils.configure_seed(seed=42)

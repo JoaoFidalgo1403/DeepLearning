@@ -38,7 +38,7 @@ class LinearModel(object):
         n_possible = y.shape[0]
         return n_correct / n_possible
 
-# Done - Check if it is correct!
+
 class Perceptron(LinearModel):
     def update_weight(self, x_i, y_i, **kwargs):
         """
@@ -46,15 +46,15 @@ class Perceptron(LinearModel):
         y_i (scalar): the gold label for that example
         other arguments are ignored
         """
+
         y_pred = np.argmax(np.dot(self.W, x_i))
 
         if y_pred != y_i: 
             self.W[y_i] += x_i  
-            self.W[y_pred] -= x_i  
+            self.W[y_pred] -= x_i
 
-# Done - Check if it is correct!
+
 class LogisticRegression(LinearModel):
-
     def update_weight(self, x_i, y_i, learning_rate=0.001, l2_penalty=0.0, **kwargs):
         """
         x_i (n_features): a single training example
@@ -79,7 +79,7 @@ class LogisticRegression(LinearModel):
         # Update weights
         self.W += learning_rate * gradient
 
-############################################################################################################################
+
 # On the making
 class MLP(object):
     def __init__(self, n_classes, n_features, hidden_size):
@@ -198,8 +198,6 @@ class MLP(object):
             self.b2 -= learning_rate * grad_biases[1]
 
         return total_loss / len(X)
-                
-############################################################################################################################
 
 
 def plot(epochs, train_accs, val_accs, filename=None):
@@ -210,7 +208,7 @@ def plot(epochs, train_accs, val_accs, filename=None):
     plt.legend()
     if filename:
         plt.savefig(filename, bbox_inches='tight')
-    #plt.show()
+    plt.show()
 
 def plot_loss(epochs, loss, filename=None):
     plt.xlabel('Epoch')
@@ -219,7 +217,7 @@ def plot_loss(epochs, loss, filename=None):
     plt.legend()
     if filename:
         plt.savefig(filename, bbox_inches='tight')
-    #plt.show()
+    plt.show()
 
 
 def plot_w_norm(epochs, w_norms, filename=None):
@@ -229,7 +227,7 @@ def plot_w_norm(epochs, w_norms, filename=None):
     plt.legend()
     if filename:
         plt.savefig(filename, bbox_inches='tight')
-    #plt.show()
+    plt.show()
 
 
 def main():
@@ -254,11 +252,10 @@ def main():
 
     add_bias = opt.model != "mlp"
     data = utils.load_dataset(data_path=opt.data_path, bias=add_bias)
-    train_X, init_train_y = data["train"]
+    train_X, train_y = data["train"]
     dev_X, dev_y = data["dev"]
     test_X, test_y = data["test"]
-
-    n_classes = np.unique(init_train_y).size
+    n_classes = np.unique(train_y).size
     n_feats = train_X.shape[1]
 
     # initialize the model
@@ -268,15 +265,6 @@ def main():
         model = LogisticRegression(n_classes, n_feats)
     else:
         model = MLP(n_classes, n_feats, opt.hidden_size)
-
-    if opt.model == 'mlp':
-        one_hot_train = np.zeros((init_train_y.shape[0], n_classes))
-        for i in range(init_train_y.shape[0]):
-            one_hot_train[i, init_train_y[i]] = 1
-        train_y = one_hot_train
-    else:
-        train_y = init_train_y  # No need to one-hot encode for non-mlp models
-        
     epochs = np.arange(1, opt.epochs + 1)
     train_loss = []
     weight_norms = []
@@ -286,18 +274,22 @@ def main():
     start = time.time()
 
     print('initial train acc: {:.4f} | initial val acc: {:.4f}'.format(
-        model.evaluate(train_X, init_train_y), model.evaluate(dev_X, dev_y)
+        model.evaluate(train_X, train_y), model.evaluate(dev_X, dev_y)
     ))
     
     for i in epochs:
         print('Training epoch {}'.format(i))
         train_order = np.random.permutation(train_X.shape[0])
         train_X = train_X[train_order]
-        init_train_y = init_train_y[train_order]
+        train_y = train_y[train_order]
         if opt.model == 'mlp':
+            one_hot_train = np.zeros((train_y.shape[0], n_classes))
+            for i in range(train_y.shape[0]):
+                one_hot_train[i, train_y[i]] = 1
+
             loss = model.train_epoch(
                 train_X,
-                train_y,
+                one_hot_train,
                 learning_rate=opt.learning_rate
             )
         else:
@@ -308,7 +300,7 @@ def main():
                 l2_penalty=opt.l2_penalty,
             )
         
-        train_accs.append(model.evaluate(train_X, init_train_y))
+        train_accs.append(model.evaluate(train_X, train_y))
         valid_accs.append(model.evaluate(dev_X, dev_y))
         if opt.model == 'mlp':
             print('loss: {:.4f} | train acc: {:.4f} | val acc: {:.4f}'.format(

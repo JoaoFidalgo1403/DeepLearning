@@ -1,1 +1,1 @@
-# Deep Learning at IST
+Deep Learning Homeworks at IST
